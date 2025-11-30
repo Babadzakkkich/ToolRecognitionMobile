@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,25 +28,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.toolrecognition.presentation.viewmodels.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParametersScreen(
-    confidence: Float,
-    iou: Float,
-    onConfidenceChange: (Float) -> Unit,
-    onIouChange: (Float) -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    viewModel: MainViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     Column(
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         // TopAppBar без Scaffold
         TopAppBar(
@@ -108,7 +111,7 @@ fun ParametersScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Текущее значение: ${String.format("%.2f", confidence)}",
+                        text = "Текущее значение: ${String.format("%.2f", uiState.confidence)}",
                         color = Color(0xFF004B23),
                         fontWeight = FontWeight.Medium
                     )
@@ -116,8 +119,10 @@ fun ParametersScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Slider(
-                        value = confidence,
-                        onValueChange = onConfidenceChange,
+                        value = uiState.confidence,
+                        onValueChange = { newConfidence ->
+                            viewModel.updateParameters(newConfidence, uiState.iou)
+                        },
                         valueRange = 0f..1f,
                         steps = 19
                     )
@@ -160,7 +165,7 @@ fun ParametersScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Текущее значение: ${String.format("%.2f", iou)}",
+                        text = "Текущее значение: ${String.format("%.2f", uiState.iou)}",
                         color = Color(0xFF004B23),
                         fontWeight = FontWeight.Medium
                     )
@@ -168,8 +173,10 @@ fun ParametersScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Slider(
-                        value = iou,
-                        onValueChange = onIouChange,
+                        value = uiState.iou,
+                        onValueChange = { newIou ->
+                            viewModel.updateParameters(uiState.confidence, newIou)
+                        },
                         valueRange = 0f..1f,
                         steps = 19
                     )
@@ -220,6 +227,17 @@ fun ParametersScreen(
                         fontSize = 14.sp
                     )
                 }
+            }
+
+            // Кнопка сохранения
+            Button(
+                onClick = onNavigateBack,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF38B000)
+                )
+            ) {
+                Text("Готово", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

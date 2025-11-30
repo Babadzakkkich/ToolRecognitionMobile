@@ -7,45 +7,15 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,9 +24,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.toolrecognition.presentation.components.BatchDownloadProgressDialog
 import com.example.toolrecognition.presentation.components.FileUploadComponent
 import com.example.toolrecognition.presentation.components.LoadingSpinner
 import com.example.toolrecognition.presentation.components.ResultsDisplay
+import com.example.toolrecognition.presentation.viewmodels.MainViewModel
 import com.example.toolrecognition.presentation.viewmodels.MainUiState
 import kotlinx.coroutines.launch
 import java.io.InputStream
@@ -70,6 +43,7 @@ fun AnalysisScreen(
     onAnalyzeBatchImages: (Pair<InputStream, String>) -> Unit,
     onClearResults: () -> Unit,
     onNavigateBack: () -> Unit,
+    onSaveResult: (String, String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -77,7 +51,16 @@ fun AnalysisScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showFileTypeDialog by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
 
+    var saveName by remember { mutableStateOf("") }
+    var saveDescription by remember { mutableStateOf("") }
+
+    // Получаем viewModel для прогресса загрузки
+    val viewModel: MainViewModel = hiltViewModel()
+    val batchProgress by viewModel.batchDownloadProgress.collectAsState()
+
+    // ------- IMAGE PICKER -------
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -89,9 +72,8 @@ fun AnalysisScreen(
             } catch (e: Exception) {
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar(
-                        message = "Ошибка при загрузке изображения: ${e.message ?: "Неизвестная ошибка"}",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Long
+                        "Ошибка при загрузке изображения: ${e.message ?: "Неизвестная ошибка"}",
+                        withDismissAction = true
                     )
                 }
             }
@@ -110,80 +92,56 @@ fun AnalysisScreen(
                 } else {
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
-                            message = "Не удалось прочитать файл",
-                            withDismissAction = true,
-                            duration = SnackbarDuration.Long
+                            "Не удалось прочитать файл",
+                            withDismissAction = true
                         )
                     }
                 }
             } catch (e: Exception) {
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar(
-                        message = "Ошибка при загрузке архива: ${e.message ?: "Неизвестная ошибка"}",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Long
+                        "Ошибка при загрузке архива: ${e.message}",
+                        withDismissAction = true
                     )
                 }
             }
         }
     }
 
-    // Обработка ошибок
-    LaunchedEffect(key1 = uiState.error) {
+    // -------- ERROR HANDLER --------
+    LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(
-                message = error,
-                withDismissAction = true,
-                duration = SnackbarDuration.Long
-            )
+            snackbarHostState.showSnackbar(error, withDismissAction = true)
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // TopAppBar без Scaffold
+    // -------------------------------- UI --------------------------------
+
+    Column(modifier = modifier.fillMaxSize()) {
+
+        // ----- TOP BAR -----
         TopAppBar(
             title = {
-                Text(
-                    text = "Анализ инструментов",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Анализ инструментов", color = Color.White, fontWeight = FontWeight.Bold)
             },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад",
-                        tint = Color.White
-                    )
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад", tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF38B000)
-            ),
             actions = {
                 if (uiState.singleAnalysisResult != null || uiState.batchAnalysisResult != null) {
-                    IconButton(
-                        onClick = onClearResults,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Очистить результаты",
-                            tint = Color.White
-                        )
+                    IconButton(onClick = onClearResults) {
+                        Icon(Icons.Default.Clear, "Очистить", tint = Color.White)
                     }
                 }
-            }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF38B000))
         )
 
-        // Snackbar Host
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Контент
+        // ----- MAIN CONTENT -----
+        Box(modifier = Modifier.fillMaxSize()) {
+
             if (uiState.isLoading) {
                 LoadingSpinner()
             } else {
@@ -194,7 +152,8 @@ fun AnalysisScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Информационная карточка
+
+                    // ----- Info Card -----
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp),
@@ -202,188 +161,81 @@ fun AnalysisScreen(
                             containerColor = Color(0xFF38B000).copy(alpha = 0.1f)
                         )
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Analytics,
-                                    contentDescription = "Анализ",
+                                    Icons.Default.Analytics,
+                                    contentDescription = null,
                                     tint = Color(0xFF38B000),
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Анализ инструментов",
+                                    "Анализ инструментов",
                                     color = Color(0xFF004B23),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Загрузите изображение или ZIP-архив для анализа инструментов. Приложение определит наличие всех необходимых инструментов и покажет результаты обнаружения.",
-                                color = Color(0xFF004B23).copy(alpha = 0.8f),
-                                fontSize = 14.sp
+                                "Загрузите изображение или ZIP-архив для анализа.",
+                                color = Color(0xFF004B23).copy(alpha = 0.8f)
                             )
                         }
                     }
 
-                    // Компонент загрузки файлов
+                    // ----- File Upload -----
                     FileUploadComponent(
-                        selectedFileName = uiState.selectedImageUri?.let {
-                            getFileName(context, it)
-                        },
+                        selectedFileName = uiState.selectedImageUri?.let { getFileName(context, it) },
                         onSelectImage = { imagePicker.launch("image/*") },
                         onSelectZip = { zipPicker.launch("application/zip") },
-                        onSelectFile = { showFileTypeDialog = true },
-                        modifier = Modifier.fillMaxWidth()
+                        onSelectFile = { showFileTypeDialog = true }
                     )
 
-                    // Предпросмотр изображения (только если есть выбранное изображение)
-                    if (uiState.selectedImageBitmap != null) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Предпросмотр изображения:",
-                                        color = Color(0xFF004B23),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Text(
-                                        text = uiState.selectedImageUri?.let { getFileName(context, it) } ?: "image.jpg",
-                                        color = Color(0xFF008000),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .align(Alignment.CenterHorizontally),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        bitmap = uiState.selectedImageBitmap.asImageBitmap(),
-                                        contentDescription = "Выбранное изображение",
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            }
-                        }
-
-                        // Кнопка анализа для одиночного изображения
-                        Button(
-                            onClick = onAnalyzeSingleImage,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF38B000)
-                            ),
-                            enabled = !uiState.isLoading
-                        ) {
-                            Text(
-                                text = "Начать анализ изображения",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    // ----- IMAGE PREVIEW -----
+                    uiState.selectedImageBitmap?.let { bitmap ->
+                        ImagePreviewCard(bitmap, uiState.selectedImageUri, context)
+                        AnalyzeButton(uiState.isLoading, onAnalyzeSingleImage)
                     }
 
-                    // Отображение результатов
+                    // ----- RESULTS -----
                     if (uiState.singleAnalysisResult != null || uiState.batchAnalysisResult != null) {
                         Text(
-                            text = "Результаты анализа:",
+                            "Результаты анализа:",
                             color = Color(0xFF004B23),
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.fillMaxWidth()
+                            fontWeight = FontWeight.Bold
                         )
 
-                        when {
-                            uiState.singleAnalysisResult != null -> {
-                                ResultsDisplay(
-                                    singleResult = uiState.singleAnalysisResult,
-                                    batchResult = null,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                            uiState.batchAnalysisResult != null -> {
-                                ResultsDisplay(
-                                    singleResult = null,
-                                    batchResult = uiState.batchAnalysisResult,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
+                        ResultsDisplay(
+                            singleResult = uiState.singleAnalysisResult,
+                            batchResult = uiState.batchAnalysisResult
+                        )
+
+                        // ----- SAVE RESULT BUTTON -----
+                        Button(
+                            onClick = { showSaveDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004B23))
+                        ) {
+                            Text("Сохранить результат", fontSize = 16.sp)
                         }
 
-                        // Кнопка для нового анализа
+                        // ----- NEW ANALYSIS -----
                         Button(
                             onClick = onClearResults,
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF008000)
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF008000))
                         ) {
-                            Text(
-                                text = "Новый анализ",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Text("Новый анализ", fontSize = 16.sp)
                         }
-                    } else if (uiState.selectedImageBitmap == null && uiState.batchAnalysisResult == null) {
-                        // Сообщение, когда ничего не выбрано
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFF5F5F5)
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Analytics,
-                                    contentDescription = "Анализ",
-                                    tint = Color(0xFF38B000),
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Text(
-                                    text = "Выберите файл для анализа",
-                                    color = Color(0xFF004B23),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                                Text(
-                                    text = "Загрузите изображение или ZIP-архив с инструментами, чтобы начать анализ",
-                                    color = Color(0xFF008000).copy(alpha = 0.7f),
-                                    fontSize = 14.sp,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
-                        }
+                    } else {
+                        InitialPlaceholder()
                     }
                 }
             }
 
-            // Snackbar размещаем в Box
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -391,66 +243,201 @@ fun AnalysisScreen(
         }
     }
 
-    // Диалог выбора типа файла
+    // -------- BATCH DOWNLOAD PROGRESS DIALOG --------
+    if (batchProgress.isDownloading) {
+        BatchDownloadProgressDialog(
+            progress = batchProgress,
+            onCancel = { viewModel.cancelBatchDownload() }
+        )
+    }
+
+    // -------- FILE TYPE DIALOG --------
     if (showFileTypeDialog) {
-        AlertDialog(
-            onDismissRequest = { showFileTypeDialog = false },
-            title = {
-                Text(
-                    text = "Выберите тип файла",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF004B23)
-                )
-            },
-            text = {
-                Text(
-                    text = "Что вы хотите загрузить для анализа?",
-                    color = Color(0xFF004B23)
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        imagePicker.launch("image/*")
-                        showFileTypeDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF38B000)
-                    )
-                ) {
-                    Text("Изображение")
-                }
-            },
-            dismissButton = {
-                Button(
-                    onClick = {
-                        zipPicker.launch("application/zip")
-                        showFileTypeDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF008000)
-                    )
-                ) {
-                    Text("ZIP архив")
+        FileTypeDialog(
+            onDismiss = { showFileTypeDialog = false },
+            onSelectImage = { imagePicker.launch("image/*") },
+            onSelectZip = { zipPicker.launch("application/zip") }
+        )
+    }
+
+    // -------- SAVE RESULT DIALOG --------
+    if (showSaveDialog) {
+        SaveResultDialog(
+            name = saveName,
+            description = saveDescription,
+            onNameChange = { saveName = it },
+            onDescriptionChange = { saveDescription = it },
+            onDismiss = { showSaveDialog = false },
+            onSave = {
+                if (saveName.isNotBlank()) {
+                    onSaveResult(saveName, saveDescription.ifBlank { null })
+                    showSaveDialog = false
                 }
             }
         )
     }
 }
 
-// Вспомогательная функция для получения имени файла
+@Composable
+private fun ImagePreviewCard(bitmap: Bitmap, uri: Uri?, context: Context) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Предпросмотр:",
+                    color = Color(0xFF004B23),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    getFileName(context, uri!!) ?: "image.jpg",
+                    color = Color(0xFF008000),
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalyzeButton(isLoading: Boolean, onAnalyze: () -> Unit) {
+    Button(
+        onClick = onAnalyze,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isLoading,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38B000))
+    ) {
+        Text("Начать анализ", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun InitialPlaceholder() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                Icons.Default.Analytics,
+                contentDescription = null,
+                tint = Color(0xFF38B000),
+                modifier = Modifier.size(48.dp)
+            )
+            Text("Выберите файл для анализа", color = Color(0xFF004B23), fontSize = 18.sp)
+        }
+    }
+}
+
+@Composable
+private fun FileTypeDialog(
+    onDismiss: () -> Unit,
+    onSelectImage: () -> Unit,
+    onSelectZip: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Выберите тип файла", fontWeight = FontWeight.Bold) },
+        text = { Text("Что вы хотите загрузить?") },
+        confirmButton = {
+            Button(onClick = {
+                onSelectImage()
+                onDismiss()
+            }) {
+                Text("Изображение")
+            }
+        },
+        dismissButton = {
+            Button(onClick = {
+                onSelectZip()
+                onDismiss()
+            }) {
+                Text("ZIP архив")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SaveResultDialog(
+    name: String,
+    description: String,
+    onNameChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Сохранение результата") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = onDescriptionChange,
+                    label = { Text("Описание (необязательно)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                enabled = name.isNotBlank()
+            ) {
+                Text("Сохранить")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+// Utility
 private fun getFileName(context: Context, uri: Uri): String? {
     return try {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex("_display_name")
-            if (nameIndex != -1) {
+            val index = cursor.getColumnIndex("_display_name")
+            if (index != -1) {
                 cursor.moveToFirst()
-                cursor.getString(nameIndex)
-            } else {
-                uri.lastPathSegment ?: "unknown_file"
-            }
-        } ?: uri.lastPathSegment ?: "unknown_file"
+                cursor.getString(index)
+            } else uri.lastPathSegment
+        } ?: uri.lastPathSegment
     } catch (e: Exception) {
-        uri.lastPathSegment ?: "unknown_file"
+        uri.lastPathSegment
     }
 }

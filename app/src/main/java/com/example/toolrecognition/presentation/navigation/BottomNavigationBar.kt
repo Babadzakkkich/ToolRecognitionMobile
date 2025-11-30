@@ -2,6 +2,7 @@ package com.example.toolrecognition.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -19,61 +20,61 @@ fun BottomNavigationBar(navController: NavController) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     NavigationBar {
+
+        // --- Главная ---
         NavigationBarItem(
             selected = currentRoute == Screen.Home.route,
             onClick = {
                 if (currentRoute != Screen.Home.route) {
                     navController.navigate(Screen.Home.route) {
-                        // Очищаем бэкстек при переходе на главную
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }
             },
-            icon = {
-                Icon(
-                    Icons.Default.Home,
-                    contentDescription = stringResource(R.string.home)
-                )
-            },
+            icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.home)) },
             label = { Text(stringResource(R.string.home)) }
         )
 
+        // --- Параметры ---
         NavigationBarItem(
             selected = currentRoute == Screen.Parameters.route,
             onClick = {
                 if (currentRoute != Screen.Parameters.route) {
                     navController.navigate(Screen.Parameters.route) {
-                        // Сохраняем бэкстек для корректной работы кнопки "Назад"
                         launchSingleTop = true
                     }
                 }
             },
-            icon = {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = stringResource(R.string.parameters)
-                )
-            },
+            icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.parameters)) },
             label = { Text(stringResource(R.string.parameters)) }
         )
 
+        // --- Анализ ---
         NavigationBarItem(
             selected = currentRoute == Screen.Analysis.route,
             onClick = {
                 if (currentRoute != Screen.Analysis.route) {
                     navController.navigate(Screen.Analysis.route) {
-                        // Сохраняем бэкстек для корректной работы кнопки "Назад"
                         launchSingleTop = true
                     }
                 }
             },
-            icon = {
-                Icon(
-                    Icons.Default.Analytics,
-                    contentDescription = stringResource(R.string.analysis)
-                )
-            },
+            icon = { Icon(Icons.Default.Analytics, contentDescription = stringResource(R.string.analysis)) },
             label = { Text(stringResource(R.string.analysis)) }
+        )
+
+        // --- Новая страница (История / Сохранённые результаты) ---
+        NavigationBarItem(
+            selected = currentRoute == Screen.SavedResults.route,
+            onClick = {
+                if (currentRoute != Screen.SavedResults.route) {
+                    navController.navigate(Screen.SavedResults.route) {
+                        launchSingleTop = true
+                    }
+                }
+            },
+            icon = { Icon(Icons.Default.History, contentDescription = "Сохранённые результаты") },
+            label = { Text("История") }
         )
     }
 }

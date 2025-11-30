@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 fun HomeScreen(
     onNavigateToParameters: () -> Unit,
     onNavigateToAnalysis: () -> Unit,
+    onNavigateToSavedResults: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -103,6 +104,13 @@ fun HomeScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
                 )
+            }
+            Button(
+                onClick = onNavigateToSavedResults,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004B23))
+            ) {
+                Text("Сохранённые результаты", fontSize = 18.sp)
             }
         }
 

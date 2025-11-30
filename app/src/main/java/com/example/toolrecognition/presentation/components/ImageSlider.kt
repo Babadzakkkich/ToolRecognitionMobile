@@ -1,6 +1,8 @@
 package com.example.toolrecognition.presentation.components
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +41,7 @@ fun ImageSlider(
     results: List<ImageAnalysisResult>,
     currentIndex: Int,
     onIndexChange: (Int) -> Unit,
+    localImagePaths: List<String>? = null,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = currentIndex, pageCount = { results.size })
@@ -122,16 +126,38 @@ fun ImageSlider(
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     val result = results[page]
-                    val url = result.annotatedImagePath?.let { ImageUrlBuilder.buildImageUrl(it) }
 
-                    if (url != null) {
-                        ImageWithLoader(
-                            imageUrl = url,
-                            contentDescription = result.filename,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    // Проверяем есть ли локальное изображение
+                    val localImagePath = localImagePaths?.getOrNull(page)
+
+                    if (localImagePath != null) {
+                        // Показываем локальное изображение
+                        val bitmap = remember(localImagePath) {
+                            BitmapFactory.decodeFile(localImagePath)
+                        }
+
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = result.filename,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            MissingImageView(result.filename)
+                        }
                     } else {
-                        MissingImageView(result.filename)
+                        // Используем URL изображения
+                        val url = result.annotatedImagePath?.let { ImageUrlBuilder.buildImageUrl(it) }
+
+                        if (url != null) {
+                            ImageWithLoader(
+                                imageUrl = url,
+                                contentDescription = result.filename,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            MissingImageView(result.filename)
+                        }
                     }
                 }
             }

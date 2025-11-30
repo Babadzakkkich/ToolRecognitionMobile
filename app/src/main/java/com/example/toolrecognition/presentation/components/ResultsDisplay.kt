@@ -1,5 +1,8 @@
 package com.example.toolrecognition.presentation.components
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
@@ -14,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,6 +29,8 @@ import com.example.toolrecognition.utils.ImageUrlBuilder
 fun ResultsDisplay(
     singleResult: SingleAnalysisResponse?,
     batchResult: BatchAnalysisResponse?,
+    localSingleImage: String? = null,
+    localBatchImages: List<String>? = null,
     modifier: Modifier = Modifier
 ) {
     var currentImageIndex by remember { mutableStateOf(0) }
@@ -60,11 +66,12 @@ fun ResultsDisplay(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (batchResult != null && batchResult.results.isNotEmpty()) {
-                // Для batch результатов показываем только слайдер
+                // Для batch результатов показываем слайдер с локальными изображениями
                 ImageSlider(
                     results = batchResult.results,
                     currentIndex = currentImageIndex,
                     onIndexChange = { currentImageIndex = it },
+                    localImagePaths = localBatchImages,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -83,7 +90,8 @@ fun ResultsDisplay(
                 // Для одиночного результата показываем изображение и результаты
                 SingleResultWithImage(
                     analysis = singleResult.analysisResult,
-                    annotatedImagePath = singleResult.config?.annotatedImagePath
+                    annotatedImagePath = singleResult.config?.annotatedImagePath,
+                    localAnnotatedPath = localSingleImage
                 )
             }
         }
@@ -93,66 +101,116 @@ fun ResultsDisplay(
 @Composable
 private fun SingleResultWithImage(
     analysis: com.example.toolrecognition.data.models.AnalysisResult,
-    annotatedImagePath: String?
+    annotatedImagePath: String?,
+    localAnnotatedPath: String? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Показываем размеченное изображение только для одиночного результата
-        if (annotatedImagePath != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Размеченное изображение:",
-                        color = Color(0xFF004B23),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+        when {
+            localAnnotatedPath != null -> {
+                // Показываем локальное изображение
+                val bitmap = remember(localAnnotatedPath) {
+                    BitmapFactory.decodeFile(localAnnotatedPath)
+                }
 
-                    // Используем ImageUrlBuilder для построения URL
-                    val imageUrl = ImageUrlBuilder.buildAnnotatedImageUrl(annotatedImagePath)
-                    ImageWithLoader(
-                        imageUrl = imageUrl,
-                        contentDescription = "Размеченное изображение",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp)
-                    )
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Размеченное изображение:",
+                            color = Color(0xFF004B23),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Локальное размеченное изображение",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                            )
+                        } else {
+                            // Если не удалось загрузить локальное изображение
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                                    .background(Color(0xFFF5F5F5)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Не удалось загрузить локальное изображение",
+                                    color = Color(0xFF004B23)
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        } else {
-            // Если изображения нет, показываем информационное сообщение
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF5F5F5)
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            annotatedImagePath != null -> {
+                // Используем URL изображения
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Изображение не содержит обнаруженных объектов",
-                        color = Color(0xFF004B23),
-                        fontWeight = FontWeight.Medium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Размеченное изображение:",
+                            color = Color(0xFF004B23),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val imageUrl = ImageUrlBuilder.buildAnnotatedImageUrl(annotatedImagePath)
+                        ImageWithLoader(
+                            imageUrl = imageUrl,
+                            contentDescription = "Размеченное изображение",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(250.dp)
+                        )
+                    }
+                }
+            }
+            else -> {
+                // Если изображения нет, показываем информационное сообщение
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF5F5F5)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Модель не нашла инструментов на этом изображении",
-                        color = Color(0xFF008000).copy(alpha = 0.7f),
-                        fontSize = 14.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Изображение не содержит обнаруженных объектов",
+                            color = Color(0xFF004B23),
+                            fontWeight = FontWeight.Medium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Модель не нашла инструментов на этом изображении",
+                            color = Color(0xFF008000).copy(alpha = 0.7f),
+                            fontSize = 14.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
                 }
             }
         }
