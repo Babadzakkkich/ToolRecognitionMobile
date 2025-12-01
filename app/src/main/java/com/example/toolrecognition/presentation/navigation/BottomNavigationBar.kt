@@ -74,7 +74,7 @@ fun BottomNavigationBar(navController: NavController) {
                 }
             },
             icon = { Icon(Icons.Default.History, contentDescription = "Сохранённые результаты") },
-            label = { Text("История") }
+            label = { Text("Результаты") }
         )
     }
 }
