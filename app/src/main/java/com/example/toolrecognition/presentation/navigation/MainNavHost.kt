@@ -3,7 +3,6 @@ package com.example.toolrecognition.presentation.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,71 +19,73 @@ import com.example.toolrecognition.presentation.viewmodels.MainViewModel
 @Composable
 fun MainNavHost() {
     val navController = rememberNavController()
+    val viewModel: MainViewModel = hiltViewModel()
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home.route
         ) {
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Home.route
-            ) {
-                composable(Screen.Home.route) {
-                    HomeScreen(
-                        onNavigateToParameters = { navController.navigate(Screen.Parameters.route) },
-                        onNavigateToAnalysis = { navController.navigate(Screen.Analysis.route) },
-                        onNavigateToSavedResults = { navController.navigate(Screen.SavedResults.route) }
-                    )
-                }
+            composable(Screen.Home.route) {
+                HomeScreen(
+                    onNavigateToParameters = { navController.navigate(Screen.Parameters.route) },
+                    onNavigateToAnalysis = { navController.navigate(Screen.Analysis.route) },
+                    onNavigateToSavedResults = { navController.navigate(Screen.SavedResults.route) }
+                )
+            }
 
-                composable(Screen.Parameters.route) {
-                    ParametersScreen(
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+            composable(Screen.Parameters.route) {
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-                composable(Screen.Analysis.route) {
-                    // Получаем viewModel внутри AnalysisScreen
-                    val viewModel: MainViewModel = hiltViewModel()
-                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                ParametersScreen(
+                    confidence = uiState.confidence,
+                    iou = uiState.iou,
+                    onConfidenceChange = { viewModel.updateParameters(it, uiState.iou) },
+                    onIouChange = { viewModel.updateParameters(uiState.confidence, it) },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
 
-                    AnalysisScreen(
-                        uiState = uiState,
-                        onSelectImage = { viewModel.setSelectedImage(it.first, it.second) },
-                        onAnalyzeSingleImage = { viewModel.analyzeSingleImage() },
-                        onAnalyzeBatchImages = { viewModel.analyzeBatchImages(it.first, it.second) },
-                        onClearResults = { viewModel.clearResults() },
-                        onNavigateBack = { navController.popBackStack() },
-                        onSaveResult = { name, description ->
-                            viewModel.saveCurrentResult(name, description)
-                        }
-                    )
-                }
+            composable(Screen.Analysis.route) {
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val batchProgress by viewModel.batchDownloadProgress.collectAsStateWithLifecycle()
 
-                composable(Screen.SavedResults.route) {
-                    SavedResultsScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                        onOpenResult = { id ->
-                            navController.navigate(Screen.SavedResultDetail.createRoute(id))
-                        }
-                    )
-                }
+                AnalysisScreen(
+                    uiState = uiState,
+                    batchProgress = batchProgress,
+                    onSelectImage = { viewModel.setSelectedImage(it.first, it.second) },
+                    onAnalyzeSingleImage = { viewModel.analyzeSingleImage() },
+                    onAnalyzeBatchImages = { viewModel.analyzeBatchImages(it.first, it.second) },
+                    onClearResults = { viewModel.clearResults() },
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveResult = { name, description ->
+                        viewModel.saveCurrentResult(name, description)
+                    },
+                    onCancelBatchDownload = { viewModel.cancelBatchDownload() }
+                )
+            }
 
-                composable(
-                    route = Screen.SavedResultDetail.route,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    val id = backStackEntry.arguments?.getLong("id") ?: 0L
+            composable(Screen.SavedResults.route) {
+                SavedResultsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenResult = { id ->
+                        navController.navigate(Screen.SavedResultDetail.createRoute(id))
+                    }
+                )
+            }
 
-                    SavedResultDetailScreen(
-                        resultId = id,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+            composable(
+                route = Screen.SavedResultDetail.route,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getLong("id") ?: 0L
+
+                SavedResultDetailScreen(
+                    resultId = id,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
     }

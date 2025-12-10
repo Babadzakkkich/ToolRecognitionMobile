@@ -24,12 +24,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.toolrecognition.presentation.components.BatchDownloadProgressDialog
 import com.example.toolrecognition.presentation.components.FileUploadComponent
 import com.example.toolrecognition.presentation.components.LoadingSpinner
 import com.example.toolrecognition.presentation.components.ResultsDisplay
-import com.example.toolrecognition.presentation.viewmodels.MainViewModel
+import com.example.toolrecognition.presentation.viewmodels.BatchDownloadProgress
 import com.example.toolrecognition.presentation.viewmodels.MainUiState
 import kotlinx.coroutines.launch
 import java.io.InputStream
@@ -38,12 +37,14 @@ import java.io.InputStream
 @Composable
 fun AnalysisScreen(
     uiState: MainUiState,
+    batchProgress: BatchDownloadProgress,
     onSelectImage: (Pair<Uri?, Bitmap?>) -> Unit,
     onAnalyzeSingleImage: () -> Unit,
     onAnalyzeBatchImages: (Pair<InputStream, String>) -> Unit,
     onClearResults: () -> Unit,
     onNavigateBack: () -> Unit,
     onSaveResult: (String, String?) -> Unit,
+    onCancelBatchDownload: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -55,10 +56,6 @@ fun AnalysisScreen(
 
     var saveName by remember { mutableStateOf("") }
     var saveDescription by remember { mutableStateOf("") }
-
-    // Получаем viewModel для прогресса загрузки
-    val viewModel: MainViewModel = hiltViewModel()
-    val batchProgress by viewModel.batchDownloadProgress.collectAsState()
 
     // ------- IMAGE PICKER -------
     val imagePicker = rememberLauncherForActivityResult(
@@ -247,7 +244,7 @@ fun AnalysisScreen(
     if (batchProgress.isDownloading) {
         BatchDownloadProgressDialog(
             progress = batchProgress,
-            onCancel = { viewModel.cancelBatchDownload() }
+            onCancel = onCancelBatchDownload
         )
     }
 
@@ -277,6 +274,10 @@ fun AnalysisScreen(
         )
     }
 }
+
+// ---------------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------------
 
 @Composable
 private fun ImagePreviewCard(bitmap: Bitmap, uri: Uri?, context: Context) {
@@ -400,29 +401,20 @@ private fun SaveResultDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
-                    label = { Text("Название") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Название") }
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = onDescriptionChange,
-                    label = { Text("Описание (необязательно)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Описание (необязательно)") }
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = onSave,
-                enabled = name.isNotBlank()
-            ) {
-                Text("Сохранить")
-            }
+            Button(onClick = onSave) { Text("Сохранить") }
         },
         dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Отмена")
-            }
+            Button(onClick = onDismiss) { Text("Отмена") }
         }
     )
 }

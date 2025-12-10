@@ -1,8 +1,6 @@
 package com.example.toolrecognition.presentation.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,63 +18,40 @@ fun BatchDownloadProgressDialog(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Dialog(onDismissRequest = { if (progress.isDownloading) onCancel() }) {
+    Dialog(onDismissRequest = {}) {
         Card(
-            modifier = modifier,
-            elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Иконка загрузки
-                Icon(
-                    imageVector = Icons.Default.Download,
-                    contentDescription = "Загрузка",
-                    tint = Color(0xFF38B000),
-                    modifier = Modifier.size(48.dp)
-                )
-
-                // Заголовок
                 Text(
-                    text = "Сохранение изображений",
+                    text = "Загрузка размеченных изображений",
                     color = Color(0xFF004B23),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                // Прогресс текст
-                Text(
-                    text = "Загружено ${progress.downloadedImages} из ${progress.totalImages} изображений",
-                    color = Color(0xFF004B23),
-                    fontSize = 14.sp
-                )
-
-                // Прогресс бар
                 LinearProgressIndicator(
                     progress = { progress.currentProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     color = Color(0xFF38B000),
-                    trackColor = Color(0xFF38B000).copy(alpha = 0.2f)
                 )
 
-                // Проценты
                 Text(
-                    text = "${progress.progressPercent}%",
-                    color = Color(0xFF008000),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    text = "${progress.downloadedImages}/${progress.totalImages} изображений (${progress.progressPercent}%)",
+                    color = Color(0xFF008000)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Кнопка отмены
                 Button(
                     onClick = onCancel,
                     colors = ButtonDefaults.buttonColors(

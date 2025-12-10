@@ -60,26 +60,46 @@ fun ImageSlider(
         val thumbWidth = with(density) { 80.dp.toPx() }
         val spacing = with(density) { 8.dp.toPx() }
         val itemWidth = thumbWidth + spacing
+        val screenWidthPx = with(density) { screenWidth.toPx() }
 
         val targetStart = pagerState.currentPage * itemWidth
         val targetEnd = targetStart + itemWidth
 
-        val visibleStart = scrollState.value.toFloat()
-        val visibleEnd = scrollState.value + with(density) { screenWidth.toPx() }
+        // Добавляем небольшой отступ (20% от ширины элемента) для более ранней прокрутки
+        val buffer = itemWidth * 0.2f
 
-        val needsScroll = targetStart < visibleStart || targetEnd > visibleEnd
-        if (!needsScroll) {
+        val visibleStart = scrollState.value.toFloat()
+        val visibleEnd = visibleStart + screenWidthPx
+
+        // Условие для прокрутки влево (когда миниатюра начинает скрываться слева)
+        val needsScrollLeft = targetStart < (visibleStart + buffer)
+
+        // Условие для прокрутки вправо (когда миниатюра начинает скрываться справа)
+        val needsScrollRight = targetEnd > (visibleEnd - buffer)
+
+        if (!needsScrollLeft && !needsScrollRight) {
             onIndexChange(pagerState.currentPage)
             return@LaunchedEffect
         }
 
-        val newScroll =
-            if (targetStart < visibleStart)
-                targetStart.toInt()
-            else
-                (targetEnd - with(density) { screenWidth.toPx() }).toInt()
+        val newScroll = when {
+            needsScrollLeft -> {
+                // Для прокрутки влево - показываем миниатюру с небольшим отступом
+                (targetStart - buffer).toInt()
+            }
+            needsScrollRight -> {
+                // Для прокрутки вправо - центрируем миниатюру
+                val centerPosition = targetStart - (screenWidthPx - itemWidth) / 2
+                centerPosition.toInt()
+            }
+            else -> scrollState.value
+        }
 
-        scrollState.animateScrollTo(newScroll.coerceAtLeast(0))
+        // Ограничиваем значения, чтобы не выйти за границы
+        val maxScroll = (results.size * itemWidth - screenWidthPx).toInt()
+        val clampedScroll = newScroll.coerceIn(0, maxScroll.coerceAtLeast(0))
+
+        scrollState.animateScrollTo(clampedScroll)
         onIndexChange(pagerState.currentPage)
     }
 
