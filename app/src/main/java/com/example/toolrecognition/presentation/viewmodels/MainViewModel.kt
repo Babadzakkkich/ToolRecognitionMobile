@@ -40,7 +40,6 @@ class MainViewModel @Inject constructor(
     val batchDownloadProgress: StateFlow<BatchDownloadProgress> = _batchDownloadProgress.asStateFlow()
 
     private val gson = Gson()
-
     private var currentDownloadJob: Job? = null
 
     fun updateParameters(confidence: Float, iou: Float) {
@@ -171,6 +170,7 @@ class MainViewModel @Inject constructor(
         }
 
         currentDownloadJob?.cancel()
+        _batchDownloadProgress.value = BatchDownloadProgress()
 
         currentDownloadJob = viewModelScope.launch {
             try {
@@ -197,11 +197,10 @@ class MainViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(savedOperationResult = "Сохранено (id=$id)")
 
             } catch (e: CancellationException) {
-                _batchDownloadProgress.value = BatchDownloadProgress()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Ошибка сохранения: ${e.message}")
-                _batchDownloadProgress.value = BatchDownloadProgress()
             } finally {
+                _batchDownloadProgress.value = BatchDownloadProgress()
                 currentDownloadJob = null
             }
         }
@@ -220,7 +219,6 @@ class MainViewModel @Inject constructor(
         )
 
         val bitmaps = mutableListOf<Bitmap>()
-
         val chunks = imagePaths.chunked(3)
 
         for ((chunkIndex, chunk) in chunks.withIndex()) {
