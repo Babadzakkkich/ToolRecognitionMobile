@@ -70,11 +70,10 @@ fun FileUploadComponent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Делаем всю область загрузки кликабельной
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onSelectFile() }, // Добавляем обработчик клика
+                    .clickable { onSelectFile() },
                 elevation = CardDefaults.cardElevation(2.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(

@@ -29,30 +29,7 @@ fun ParametersScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // TopAppBar без Scaffold
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Параметры модели",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад",
-                        tint = Color.White
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF38B000)
-            )
-        )
 
-        // Контент
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -68,7 +45,6 @@ fun ParametersScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Кнопка сохранения
             Button(
                 onClick = onNavigateBack,
                 modifier = Modifier.fillMaxWidth(),

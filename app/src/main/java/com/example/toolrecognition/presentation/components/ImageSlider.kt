@@ -65,16 +65,13 @@ fun ImageSlider(
         val targetStart = pagerState.currentPage * itemWidth
         val targetEnd = targetStart + itemWidth
 
-        // Добавляем небольшой отступ (20% от ширины элемента) для более ранней прокрутки
         val buffer = itemWidth * 0.2f
 
         val visibleStart = scrollState.value.toFloat()
         val visibleEnd = visibleStart + screenWidthPx
 
-        // Условие для прокрутки влево (когда миниатюра начинает скрываться слева)
         val needsScrollLeft = targetStart < (visibleStart + buffer)
 
-        // Условие для прокрутки вправо (когда миниатюра начинает скрываться справа)
         val needsScrollRight = targetEnd > (visibleEnd - buffer)
 
         if (!needsScrollLeft && !needsScrollRight) {
@@ -84,18 +81,15 @@ fun ImageSlider(
 
         val newScroll = when {
             needsScrollLeft -> {
-                // Для прокрутки влево - показываем миниатюру с небольшим отступом
                 (targetStart - buffer).toInt()
             }
             needsScrollRight -> {
-                // Для прокрутки вправо - центрируем миниатюру
                 val centerPosition = targetStart - (screenWidthPx - itemWidth) / 2
                 centerPosition.toInt()
             }
             else -> scrollState.value
         }
 
-        // Ограничиваем значения, чтобы не выйти за границы
         val maxScroll = (results.size * itemWidth - screenWidthPx).toInt()
         val clampedScroll = newScroll.coerceIn(0, maxScroll.coerceAtLeast(0))
 
@@ -147,11 +141,9 @@ fun ImageSlider(
                 ) { page ->
                     val result = results[page]
 
-                    // Проверяем есть ли локальное изображение
                     val localImagePath = localImagePaths?.getOrNull(page)
 
                     if (localImagePath != null) {
-                        // Показываем локальное изображение
                         val bitmap = remember(localImagePath) {
                             BitmapFactory.decodeFile(localImagePath)
                         }
@@ -166,7 +158,6 @@ fun ImageSlider(
                             MissingImageView(result.filename)
                         }
                     } else {
-                        // Используем URL изображения
                         val url = result.annotatedImagePath?.let { ImageUrlBuilder.buildImageUrl(it) }
 
                         if (url != null) {

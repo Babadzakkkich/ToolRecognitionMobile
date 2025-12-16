@@ -62,7 +62,6 @@ fun ParametersPanel(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Confidence Slider
             Column {
                 Text(
                     text = "Уверенность (confidence): ${String.format("%.2f", confidence)}",
@@ -85,7 +84,6 @@ fun ParametersPanel(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // IoU Slider
             Column {
                 Text(
                     text = "Пересечение (IoU): ${String.format("%.2f", iou)}",

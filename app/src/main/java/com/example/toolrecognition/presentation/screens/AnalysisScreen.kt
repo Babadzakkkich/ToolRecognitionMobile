@@ -57,7 +57,6 @@ fun AnalysisScreen(
     var saveName by remember { mutableStateOf("") }
     var saveDescription by remember { mutableStateOf("") }
 
-    // ------- IMAGE PICKER -------
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -105,38 +104,15 @@ fun AnalysisScreen(
         }
     }
 
-    // -------- ERROR HANDLER --------
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             snackbarHostState.showSnackbar(error, withDismissAction = true)
         }
     }
 
-    // -------------------------------- UI --------------------------------
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // ----- TOP BAR -----
-        TopAppBar(
-            title = {
-                Text("Анализ инструментов", color = Color.White, fontWeight = FontWeight.Bold)
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад", tint = Color.White)
-                }
-            },
-            actions = {
-                if (uiState.singleAnalysisResult != null || uiState.batchAnalysisResult != null) {
-                    IconButton(onClick = onClearResults) {
-                        Icon(Icons.Default.Clear, "Очистить", tint = Color.White)
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF38B000))
-        )
-
-        // ----- MAIN CONTENT -----
         Box(modifier = Modifier.fillMaxSize()) {
 
             if (uiState.isLoading) {
@@ -150,7 +126,6 @@ fun AnalysisScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
-                    // ----- Info Card -----
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp),
@@ -182,7 +157,6 @@ fun AnalysisScreen(
                         }
                     }
 
-                    // ----- File Upload -----
                     FileUploadComponent(
                         selectedFileName = uiState.selectedImageUri?.let { getFileName(context, it) },
                         onSelectImage = { imagePicker.launch("image/*") },
@@ -190,13 +164,11 @@ fun AnalysisScreen(
                         onSelectFile = { showFileTypeDialog = true }
                     )
 
-                    // ----- IMAGE PREVIEW -----
                     uiState.selectedImageBitmap?.let { bitmap ->
                         ImagePreviewCard(bitmap, uiState.selectedImageUri, context)
                         AnalyzeButton(uiState.isLoading, onAnalyzeSingleImage)
                     }
 
-                    // ----- RESULTS -----
                     if (uiState.singleAnalysisResult != null || uiState.batchAnalysisResult != null) {
                         Text(
                             "Результаты анализа:",
@@ -210,7 +182,6 @@ fun AnalysisScreen(
                             batchResult = uiState.batchAnalysisResult
                         )
 
-                        // ----- SAVE RESULT BUTTON -----
                         Button(
                             onClick = { showSaveDialog = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -219,7 +190,6 @@ fun AnalysisScreen(
                             Text("Сохранить результат", fontSize = 16.sp)
                         }
 
-                        // ----- NEW ANALYSIS -----
                         Button(
                             onClick = onClearResults,
                             modifier = Modifier.fillMaxWidth(),
@@ -240,7 +210,6 @@ fun AnalysisScreen(
         }
     }
 
-    // -------- BATCH DOWNLOAD PROGRESS DIALOG --------
     if (batchProgress.isDownloading) {
         BatchDownloadProgressDialog(
             progress = batchProgress,
@@ -248,7 +217,6 @@ fun AnalysisScreen(
         )
     }
 
-    // -------- FILE TYPE DIALOG --------
     if (showFileTypeDialog) {
         FileTypeDialog(
             onDismiss = { showFileTypeDialog = false },
@@ -257,7 +225,6 @@ fun AnalysisScreen(
         )
     }
 
-    // -------- SAVE RESULT DIALOG --------
     if (showSaveDialog) {
         SaveResultDialog(
             name = saveName,
@@ -274,10 +241,6 @@ fun AnalysisScreen(
         )
     }
 }
-
-// ---------------------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------------------
 
 @Composable
 private fun ImagePreviewCard(bitmap: Bitmap, uri: Uri?, context: Context) {
@@ -419,7 +382,6 @@ private fun SaveResultDialog(
     )
 }
 
-// Utility
 private fun getFileName(context: Context, uri: Uri): String? {
     return try {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->

@@ -66,7 +66,6 @@ fun ResultsDisplay(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (batchResult != null && batchResult.results.isNotEmpty()) {
-                // Для batch результатов показываем слайдер с локальными изображениями
                 ImageSlider(
                     results = batchResult.results,
                     currentIndex = currentImageIndex,
@@ -77,17 +76,14 @@ fun ResultsDisplay(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Показываем только результаты анализа БЕЗ дублирования изображения
                 val currentResult = batchResult.results[currentImageIndex]
                 SingleResultView(currentResult.analysisResult)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Сводка по batch
                 BatchSummaryView(batchResult)
 
             } else if (singleResult != null) {
-                // Для одиночного результата показываем изображение и результаты
                 SingleResultWithImage(
                     analysis = singleResult.analysisResult,
                     annotatedImagePath = singleResult.config?.annotatedImagePath,
@@ -108,10 +104,8 @@ private fun SingleResultWithImage(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Показываем размеченное изображение только для одиночного результата
         when {
             localAnnotatedPath != null -> {
-                // Показываем локальное изображение
                 val bitmap = remember(localAnnotatedPath) {
                     BitmapFactory.decodeFile(localAnnotatedPath)
                 }
@@ -139,7 +133,6 @@ private fun SingleResultWithImage(
                                     .height(250.dp)
                             )
                         } else {
-                            // Если не удалось загрузить локальное изображение
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -157,7 +150,6 @@ private fun SingleResultWithImage(
                 }
             }
             annotatedImagePath != null -> {
-                // Используем URL изображения
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -184,7 +176,6 @@ private fun SingleResultWithImage(
                 }
             }
             else -> {
-                // Если изображения нет, показываем информационное сообщение
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -215,7 +206,6 @@ private fun SingleResultWithImage(
             }
         }
 
-        // Остальной контент (статус, инструменты и т.д.)
         SingleResultView(analysis)
     }
 }
@@ -226,7 +216,6 @@ private fun SingleResultView(analysis: com.example.toolrecognition.data.models.A
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Статус
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = getStatusColor(analysis.status)
@@ -254,7 +243,6 @@ private fun SingleResultView(analysis: com.example.toolrecognition.data.models.A
             }
         }
 
-        // Отсутствующие инструменты
         if (analysis.missingTools.isNotEmpty()) {
             ToolsSection(
                 title = "Отсутствующие инструменты",
@@ -264,7 +252,6 @@ private fun SingleResultView(analysis: com.example.toolrecognition.data.models.A
             )
         }
 
-        // Лишние инструменты
         if (analysis.extraTools.isNotEmpty()) {
             ToolsSection(
                 title = "Лишние инструменты",
@@ -274,7 +261,6 @@ private fun SingleResultView(analysis: com.example.toolrecognition.data.models.A
             )
         }
 
-        // Обнаруженные инструменты
         if (analysis.detections.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth()

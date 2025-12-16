@@ -8,10 +8,8 @@ sealed class Screen(val route: String) {
 
     object Analysis : Screen("analysis")
 
-    // Новый экран: список сохранённых результатов
     object SavedResults : Screen("saved_results")
 
-    // Новый экран: подробный просмотр сохранённого результата
     object SavedResultDetail : Screen("saved_result_detail/{id}") {
         fun createRoute(id: Long) = "saved_result_detail/$id"
     }

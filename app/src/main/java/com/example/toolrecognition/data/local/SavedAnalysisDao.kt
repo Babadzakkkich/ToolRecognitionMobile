@@ -17,7 +17,6 @@ interface SavedAnalysisDao {
     @Delete
     suspend fun delete(entity: SavedAnalysisEntity)
 
-    // Новый метод для наблюдения за всеми результатами
     @Query("SELECT * FROM saved_analysis ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<SavedAnalysisEntity>>
 }

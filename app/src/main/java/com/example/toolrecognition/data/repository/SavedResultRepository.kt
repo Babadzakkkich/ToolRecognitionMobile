@@ -66,17 +66,13 @@ class SavedResultsRepository @Inject constructor(
         return dao.insert(entity)
     }
 
-    // ВАЖНО: Добавляем удаление файлов при удалении сущности
     suspend fun delete(entity: SavedAnalysisEntity) {
-        // Удаляем файлы изображений
         deleteImageFiles(entity)
-        // Удаляем из базы данных
         dao.delete(entity)
     }
 
     private fun deleteImageFiles(entity: SavedAnalysisEntity) {
         try {
-            // Удаляем одиночное изображение
             entity.localAnnotatedImagePath?.let { path ->
                 val file = File(path)
                 if (file.exists()) {
@@ -84,7 +80,6 @@ class SavedResultsRepository @Inject constructor(
                 }
             }
 
-            // Удаляем batch изображения
             entity.localAnnotatedImagesBatch?.forEach { path ->
                 val file = File(path)
                 if (file.exists()) {
@@ -93,7 +88,6 @@ class SavedResultsRepository @Inject constructor(
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            // Логируем ошибку, но не прерываем выполнение
         }
     }
 
@@ -103,7 +97,6 @@ class SavedResultsRepository @Inject constructor(
 
     suspend fun getById(id: Long): SavedAnalysisEntity? = dao.getById(id)
 
-    // Старая версия delete - оставляем для совместимости, но помечаем как deprecated
     @Deprecated("Use delete(entity: SavedAnalysisEntity) instead")
     suspend fun deleteOld(entity: SavedAnalysisEntity) = dao.delete(entity)
 }

@@ -31,7 +31,6 @@ class Converters {
         return obj?.let { gson.toJson(it) }
     }
 
-    // Конвертеры для Map/List
     @TypeConverter
     fun mapFromJson(json: String?): Map<String, Int>? {
         if (json.isNullOrEmpty()) return null
@@ -42,7 +41,6 @@ class Converters {
     @TypeConverter
     fun mapToJson(map: Map<String, Int>?): String? = map?.let { gson.toJson(it) }
 
-    // Новые конвертеры для списка путей
     @TypeConverter
     fun fromStringList(list: List<String>?): String? =
         list?.joinToString(";;")

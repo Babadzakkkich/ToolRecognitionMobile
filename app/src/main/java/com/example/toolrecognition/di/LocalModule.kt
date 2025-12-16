@@ -25,7 +25,7 @@ object LocalModule {
             appContext,
             AppDatabase::class.java,
             "saved_results.db"
-        ).fallbackToDestructiveMigration() // Добавляем для миграции
+        ).fallbackToDestructiveMigration()
             .build()
     }
 

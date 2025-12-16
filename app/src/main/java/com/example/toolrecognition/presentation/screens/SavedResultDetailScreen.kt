@@ -35,16 +35,6 @@ fun SavedResultDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        TopAppBar(
-            title = { Text("Детали результата", color = Color.White) },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF38B000))
-        )
-
         if (entity == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -84,7 +74,7 @@ fun SavedResultDetailScreen(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             ResultsDisplay(
                 singleResult = single,

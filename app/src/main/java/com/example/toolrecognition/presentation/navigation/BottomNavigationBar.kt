@@ -20,8 +20,6 @@ fun BottomNavigationBar(navController: NavController) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     NavigationBar {
-
-        // --- Главная ---
         NavigationBarItem(
             selected = currentRoute == Screen.Home.route,
             onClick = {
@@ -35,7 +33,6 @@ fun BottomNavigationBar(navController: NavController) {
             label = { Text(stringResource(R.string.home)) }
         )
 
-        // --- Параметры ---
         NavigationBarItem(
             selected = currentRoute == Screen.Parameters.route,
             onClick = {
@@ -49,7 +46,6 @@ fun BottomNavigationBar(navController: NavController) {
             label = { Text(stringResource(R.string.parameters)) }
         )
 
-        // --- Анализ ---
         NavigationBarItem(
             selected = currentRoute == Screen.Analysis.route,
             onClick = {
@@ -63,7 +59,6 @@ fun BottomNavigationBar(navController: NavController) {
             label = { Text(stringResource(R.string.analysis)) }
         )
 
-        // --- Новая страница (История / Сохранённые результаты) ---
         NavigationBarItem(
             selected = currentRoute == Screen.SavedResults.route,
             onClick = {

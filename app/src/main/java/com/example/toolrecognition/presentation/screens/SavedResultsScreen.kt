@@ -29,26 +29,6 @@ fun SavedResultsScreen(
     val savedResults by viewModel.observeSavedResults().collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.fillMaxSize()) {
-
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Сохранённые результаты",
-                    color = Color.White
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF38B000))
-        )
-
         if (savedResults.isEmpty()) {
             EmptySavedResultsPlaceholder()
         } else {

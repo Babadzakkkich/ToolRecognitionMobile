@@ -10,8 +10,11 @@ import com.example.toolrecognition.data.local.SavedAnalysisEntity
 import com.example.toolrecognition.data.models.BatchAnalysisResponse
 import com.example.toolrecognition.data.models.SingleAnalysisResponse
 import com.example.toolrecognition.data.repository.SavedResultsRepository
+import com.example.toolrecognition.utils.ImageUrlBuilder
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -33,15 +36,12 @@ class MainViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    // Прогресс загрузки batch изображений
     private val _batchDownloadProgress = MutableStateFlow(BatchDownloadProgress())
     val batchDownloadProgress: StateFlow<BatchDownloadProgress> = _batchDownloadProgress.asStateFlow()
 
     private val gson = Gson()
 
-    // -----------------------------
-    //         PARAMS & IMAGE
-    // -----------------------------
+    private var currentDownloadJob: Job? = null
 
     fun updateParameters(confidence: Float, iou: Float) {
         _uiState.value = _uiState.value.copy(
@@ -56,10 +56,6 @@ class MainViewModel @Inject constructor(
             selectedImageBitmap = bitmap
         )
     }
-
-    // -----------------------------
-    //       SINGLE ANALYSIS
-    // -----------------------------
 
     fun analyzeSingleImage() {
         val bitmap = _uiState.value.selectedImageBitmap
@@ -103,10 +99,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // -----------------------------
-    //         BATCH ANALYSIS
-    // -----------------------------
-
     fun analyzeBatchImages(inputStream: InputStream, filename: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -144,10 +136,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // -----------------------------
-    //           CLEARING
-    // -----------------------------
-
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
@@ -170,13 +158,8 @@ class MainViewModel @Inject constructor(
             error = null,
             savedOperationResult = null
         )
-        // Сбрасываем прогресс
         _batchDownloadProgress.value = BatchDownloadProgress()
     }
-
-    // -----------------------------
-    //   SAVING TO LOCAL DATABASE
-    // -----------------------------
 
     fun saveCurrentResult(name: String, description: String?) {
         val single = _uiState.value.singleAnalysisResult
@@ -187,10 +170,11 @@ class MainViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        currentDownloadJob?.cancel()
+
+        currentDownloadJob = viewModelScope.launch {
             try {
                 val id = if (single != null) {
-                    // Сохраняем одиночный результат
                     val singleJson = gson.toJson(single)
                     savedResultsRepository.saveSingleResult(
                         name = name,
@@ -199,7 +183,6 @@ class MainViewModel @Inject constructor(
                         annotatedBitmap = _uiState.value.selectedImageBitmap
                     )
                 } else {
-                    // Сохраняем batch результат - ЗАГРУЖАЕМ РАЗМЕЧЕННЫЕ ИЗОБРАЖЕНИЯ с прогрессом
                     val batchJson = gson.toJson(batch)
                     val annotatedBitmaps = loadBatchAnnotatedImagesWithProgress(batch!!)
 
@@ -213,25 +196,22 @@ class MainViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(savedOperationResult = "Сохранено (id=$id)")
 
+            } catch (e: CancellationException) {
+                _batchDownloadProgress.value = BatchDownloadProgress()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Ошибка сохранения: ${e.message}")
-            } finally {
-                // Сбрасываем прогресс после завершения
                 _batchDownloadProgress.value = BatchDownloadProgress()
+            } finally {
+                currentDownloadJob = null
             }
         }
     }
-
-    // -----------------------------
-    //   ЗАГРУЗКА РАЗМЕЧЕННЫХ ИЗОБРАЖЕНИЙ ДЛЯ BATCH С ПРОГРЕССОМ
-    // -----------------------------
 
     private suspend fun loadBatchAnnotatedImagesWithProgress(batchResult: BatchAnalysisResponse): List<Bitmap> {
         val imagePaths = batchResult.results.mapNotNull { it.annotatedImagePath }
 
         if (imagePaths.isEmpty()) return emptyList()
 
-        // Инициализируем прогресс
         _batchDownloadProgress.value = BatchDownloadProgress(
             isDownloading = true,
             totalImages = imagePaths.size,
@@ -241,15 +221,25 @@ class MainViewModel @Inject constructor(
 
         val bitmaps = mutableListOf<Bitmap>()
 
-        // Разбиваем на группы по 5 изображений для параллельной загрузки
-        val chunks = imagePaths.chunked(5)
+        val chunks = imagePaths.chunked(3)
 
         for ((chunkIndex, chunk) in chunks.withIndex()) {
-            // Загружаем текущую группу параллельно
+            currentDownloadJob?.let {
+                if (!it.isActive) {
+                    throw CancellationException("Загрузка отменена")
+                }
+            }
+
             val chunkResults = chunk.map { path ->
                 viewModelScope.async {
                     try {
-                        val imageUrl = buildImageUrl(path)
+                        currentDownloadJob?.let {
+                            if (!it.isActive) {
+                                return@async null
+                            }
+                        }
+
+                        val imageUrl = ImageUrlBuilder.buildAnnotatedImageUrl(path)
                         val response = apiService.getImage(imageUrl)
                         if (response.isSuccessful) {
                             response.body()?.byteStream()?.use { inputStream ->
@@ -265,12 +255,16 @@ class MainViewModel @Inject constructor(
                 }
             }.awaitAll()
 
-            // Добавляем успешно загруженные изображения
+            currentDownloadJob?.let {
+                if (!it.isActive) {
+                    throw CancellationException("Загрузка отменена")
+                }
+            }
+
             chunkResults.filterNotNull().forEach { bitmap ->
                 bitmaps.add(bitmap)
             }
 
-            // Обновляем прогресс
             val downloaded = (chunkIndex + 1) * chunk.size
             val progress = (downloaded.toFloat() / imagePaths.size).coerceAtMost(1f)
 
@@ -285,16 +279,6 @@ class MainViewModel @Inject constructor(
         return bitmaps
     }
 
-    // Старая версия для совместимости
-    private suspend fun loadBatchAnnotatedImages(batchResult: BatchAnalysisResponse): List<Bitmap> {
-        return loadBatchAnnotatedImagesWithProgress(batchResult)
-    }
-
-    private fun buildImageUrl(path: String): String {
-        val clean = path.replace("\\", "/").removePrefix("results/")
-        return "http://10.0.2.2:8000/tools/images/$clean"
-    }
-
     fun observeSavedResults(): Flow<List<SavedAnalysisEntity>> =
         savedResultsRepository.observeAll()
 
@@ -307,15 +291,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // Отмена загрузки
     fun cancelBatchDownload() {
+        currentDownloadJob?.cancel()
         _batchDownloadProgress.value = BatchDownloadProgress()
     }
 }
-
-// -----------------------------
-//          UI STATE
-// -----------------------------
 
 data class MainUiState(
     val confidence: Float = 0.5f,
@@ -329,7 +309,6 @@ data class MainUiState(
     val savedOperationResult: String? = null
 )
 
-// Прогресс загрузки batch изображений
 data class BatchDownloadProgress(
     val isDownloading: Boolean = false,
     val totalImages: Int = 0,

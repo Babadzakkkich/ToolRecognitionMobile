@@ -12,11 +12,9 @@ data class SavedAnalysisEntity(
     val description: String?,
     val timestamp: Long,
 
-    // JSON результатов
     val singleAnalysisJson: String? = null,
     val batchAnalysisJson: String? = null,
 
-    // --- Новые поля для оффлайн изображений ---
-    val localAnnotatedImagePath: String? = null,              // одиночное изображение
-    val localAnnotatedImagesBatch: List<String>? = null       // batch изображения
+    val localAnnotatedImagePath: String? = null,
+    val localAnnotatedImagesBatch: List<String>? = null
 )
